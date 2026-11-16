@@ -120,6 +120,14 @@ st.markdown(
 )
 
 API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+if not API_KEY:
+    try:
+        if "GEMINI_API_KEY" in st.secrets:
+            API_KEY = st.secrets["GEMINI_API_KEY"]
+        elif "GOOGLE_API_KEY" in st.secrets:
+            API_KEY = st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        pass
 SAMPLE_DATASET_PATH = os.path.join(os.path.dirname(__file__), "sample_sales_data.csv")
 
 if "messages" not in st.session_state:
