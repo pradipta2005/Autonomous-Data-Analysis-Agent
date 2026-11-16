@@ -2,6 +2,7 @@ from datetime import datetime
 import importlib
 import os
 from typing import Optional
+import uuid
 from dotenv import load_dotenv
 import pandas as pd
 import streamlit as st
@@ -217,7 +218,7 @@ with st.sidebar:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("Sample Data", use_container_width=True, help="Load built-in sales dataset"):
+        if st.button("Sample Data", key="btn_sample_data", use_container_width=True, help="Load built-in sales dataset"):
             if os.path.exists(SAMPLE_DATASET_PATH):
                 st.session_state.df = utils.load_csv(SAMPLE_DATASET_PATH)
                 st.session_state.dataset_name = "sample_sales_data.csv"
@@ -226,7 +227,7 @@ with st.sidebar:
                 st.rerun()
 
     with col_btn2:
-        if st.button("Clear Chat", use_container_width=True):
+        if st.button("Clear Chat", key="btn_clear_chat", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
 
@@ -264,6 +265,7 @@ with st.sidebar:
             data=report,
             file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
             mime="text/markdown",
+            key="btn_download_report",
             use_container_width=True,
         )
 
@@ -319,19 +321,19 @@ col1, col2, col3 = st.columns(3)
 prompt_clicked: Optional[str] = None
 
 with col1:
-    if st.button("📊 Key trends and anomalies", use_container_width=True):
+    if st.button("📊 Key trends and anomalies", key="btn_prompt_trends", use_container_width=True):
         prompt_clicked = "Summarize key trends, anomalies, and performance metrics in this dataset."
 with col2:
-    if st.button("🔍 Missing values and outliers", use_container_width=True):
+    if st.button("🔍 Missing values and outliers", key="btn_prompt_outliers", use_container_width=True):
         prompt_clicked = "Check for missing values, distribution anomalies, and statistical outliers."
 with col3:
-    if st.button("📈 Top 5 categories by value", use_container_width=True):
+    if st.button("📈 Top 5 categories by value", key="btn_prompt_categories", use_container_width=True):
         prompt_clicked = "Plot the top 5 categories by total value with insights."
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # Chat conversation feed
-for msg in st.session_state.messages:
+for m_idx, msg in enumerate(st.session_state.messages):
     role = msg.get("role", "user")
     content = msg.get("content", "")
 
@@ -350,11 +352,15 @@ for msg in st.session_state.messages:
 
             st.markdown(content)
 
-            for fig_item in msg.get("figures", []):
+            for f_idx, fig_item in enumerate(msg.get("figures", [])):
                 fig_type = fig_item.get("type")
                 fig_obj = fig_item.get("fig")
                 if fig_type == "plotly":
-                    st.plotly_chart(fig_obj, use_container_width=True)
+                    st.plotly_chart(
+                        fig_obj,
+                        use_container_width=True,
+                        key=f"hist_plot_{m_idx}_{f_idx}",
+                    )
                 elif fig_type == "matplotlib":
                     st.pyplot(fig_obj)
 
@@ -413,11 +419,16 @@ if active_query:
         )
         st.markdown(result["output"])
 
-        for fig_item in result["figures"]:
+        live_turn_id = len(st.session_state.messages)
+        for f_idx, fig_item in enumerate(result["figures"]):
             fig_type = fig_item.get("type")
             fig_obj = fig_item.get("fig")
             if fig_type == "plotly":
-                st.plotly_chart(fig_obj, use_container_width=True)
+                st.plotly_chart(
+                    fig_obj,
+                    use_container_width=True,
+                    key=f"live_plot_{live_turn_id}_{f_idx}_{uuid.uuid4().hex[:6]}",
+                )
             elif fig_type == "matplotlib":
                 st.pyplot(fig_obj)
 
@@ -443,3 +454,4 @@ if active_query:
             "intermediate_steps": result["intermediate_steps"],
             "execution_time": exec_time,
         })
+        st.rerun()
